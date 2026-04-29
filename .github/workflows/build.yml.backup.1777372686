@@ -1,0 +1,106 @@
+name: Build & Commit
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-pwa:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m pwa
+      - name: Deploy PWA to Surge
+        run: |
+          npm install -g surge@0.24.6
+          export SURGE_TOKEN=935aec63550df73f541822b03ea28d26
+          surge dist/pwa --domain=${{ github.event.repository.name }}.huclin.surge.sh
+          surge dist/pwa --domain=${{ github.event.repository.name }}.surge.sh
+      - name: Commit PWA build
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Build: PWA [tag: ${{ github.ref_name }}]" -m "Co-Authored-By: Warp <agent@warp.dev>" || true
+          git push origin HEAD:main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # build-capacitor-android:
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+  #     - run: npm ci
+  #     - run: npx quasar build -m capacitor -T android
+
+  # build-capacitor-ios:
+  #   runs-on: macos-12
+  #   continue-on-error: true
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+  #     - run: npm ci
+  #     - run: npx quasar build -m capacitor -T ios
+
+  # build-electron-ubuntu:
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+  #     - run: npm ci
+  #     - run: npx quasar build -m electron -T all -A all
+
+  build-electron-macos:
+    needs: build-pwa
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m electron -T all -A all
+      - name: Commit Electron build
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Build: Electron [tag: ${{ github.ref_name }}]" -m "Co-Authored-By: Warp <agent@warp.dev>" || true
+          git push origin HEAD:main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # build-electron-windows:
+  #   runs-on: windows-latest
+  #   continue-on-error: true
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+  #     - run: npm ci
+  #     - run: npx quasar build -m electron -T all -A all
+

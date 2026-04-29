@@ -1,0 +1,124 @@
+name: Build & Commit
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Release
+        run: gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Automated build for ${{ github.ref_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+  build-pwa:
+    needs: create-release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m pwa
+      - name: Debug dist paths
+        run: ls -R dist/
+      - name: Deploy PWA to Surge
+        run: |
+          npm install -g surge@0.27.3
+          export SURGE_TOKEN=935aec63550df73f541822b03ea28d26
+          surge dist/pwa --domain=${{ github.event.repository.name }}.huclin.surge.sh
+          surge dist/pwa --domain=${{ github.event.repository.name }}.surge.sh
+      - name: Commit PWA build
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Build: PWA [tag: ${{ github.ref_name }}]" -m "Co-Authored-By: Warp <agent@warp.dev>" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-capacitor-android:
+    needs: create-release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - run: npm install
+      - run: npx quasar build -m capacitor -T android
+      - name: Debug dist paths
+        run: ls -R dist/
+
+  build-capacitor-ios:
+    needs: create-release
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m capacitor -T ios -- --buildFlag="-sdk iphonesimulator" --buildFlag="-configuration Debug" CODE_SIGNING_ALLOWED=NO
+      - name: Debug dist paths
+        run: ls -R dist/
+
+  build-electron-ubuntu:
+    needs: create-release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m electron -T linux -A all
+      - name: Debug dist paths
+        run: ls -R dist/
+
+  build-electron-macos:
+    needs: create-release
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m electron -T darwin -A all
+      - name: Debug dist paths
+        run: ls -R dist/
+
+  build-electron-windows:
+    needs: create-release
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx quasar build -m electron -T win32 -A all
+      - name: Debug dist paths
+        run: ls -R dist/
+

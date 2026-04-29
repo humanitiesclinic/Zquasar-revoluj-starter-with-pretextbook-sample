@@ -1,0 +1,12 @@
+{
+  "name": "zquasar-revoluj-starter",
+  "version": "0.0.1",
+  "description": "A Quasar Project",
+  "author": "Your Name <your.email@example.com>",
+  "private": true,
+  "dependencies": {
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  }
+}
